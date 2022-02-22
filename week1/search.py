@@ -35,14 +35,23 @@ def process_filters(filters_input):
         if type == "range":
             _from = request.args.get(f"{filter}.from")
             _to = request.args.get(f"{filter}.to")
-            _range = {
-                "gte": _from if _from else "*",
-                "lt": _to if _to else "*"
-            }
+            if _from and _to:
+                _range = {
+                    "gte": _from,
+                    "lt": _to
+                }
+            elif _from:
+                _range = {
+                    "gte": _from
+                }
             _filter = {"range": {filter: _range}}
             filters.append(_filter)
-            display_filters.append(f"{display_name}: {_range['gte']} to {_range['lt']}")
-            applied_filters = f"{applied_filters}&{filter}.from={_range['gte']}&{filter}.to={_range['lt']}"
+            display_filters.append(f"{display_name}: {_range['gte']} to {_range.get('lt', '')}")
+            if _to:
+                applied_filters = f"{applied_filters}&{filter}.from={_range['gte']}&{filter}.to={_range['lt']}"
+            else:
+                applied_filters = f"{applied_filters}&{filter}.from={_range['gte']}"
+
         elif type == "terms":
             _field = request.args.get(f"{filter}.fieldName", filter)
             _key = request.args.get(f"{filter}.key")
@@ -96,7 +105,7 @@ def query():
         query_obj = create_query("*", [], sort, sortDir)
 
     print("query obj: {}".format(query_obj))
-    response = opensearch.search(query_obj)
+    response = opensearch.search(body=query_obj, index="bbuy_products")
 
     #print(response)
     if error is None:
@@ -109,6 +118,19 @@ def query():
 
 def create_query(user_query, filters, sort="_score", sortDir="desc"):
     print("** In create query: {} Filters: {} Sort: {}".format(user_query, filters, sort))
+
+    if user_query == "*":
+        match_q = {
+            "match_all": {}
+        }
+    else:
+        match_q = {
+            "multi_match": {
+                "query": user_query,
+                "fields" : ["name^100", "shortDescription^50", "longDescription^10", "department"]
+            }
+        }
+
     query_obj = {
         'size': 10,
         "sort": [
@@ -118,18 +140,43 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
                     }
             }
         ],
+
         "query": {
-            "bool": {
-                "should": [
+            "function_score": {
+                "query": {
+                    "bool": {
+                        "should": [
+                            match_q
+                        ],
+                        "filter": filters
+                    }
+                },
+                "boost_mode": "multiply",
+                "score_mode": "avg",
+                "functions": [
                     {
-                        "multi_match": {
-                            "query": user_query,
-                            "fields" : ["name^2", "shortDescription", "longDescription"]
+                        "field_value_factor": {
+                            "field": "salesRankShortTerm",
+                            "missing": 100000000,
+                            "modifier": "reciprocal"
+                        }
+                    },
+                    {
+                        "field_value_factor": {
+                            "field": "salesRankMediumTerm",
+                            "missing": 100000000,
+                            "modifier": "reciprocal"
+                        }
+                    },
+                    {
+                        "field_value_factor": {
+                            "field": "salesRankLongTerm",
+                            "missing": 100000000,
+                            "modifier": "reciprocal"
                         }
                     }
-                ],
-                "filter": filters
-            },
+                ]
+            }
         },
         "aggs": {
             "department": {
@@ -147,12 +194,35 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
                 "range": {
                     "field": "regularPrice",
                     "ranges": [
-                        {"key": "$", "to": 100},
-                        {"key": "$$", "from": 100, "to": 200},
-                        {"key": "$$$", "from": 200, "to": 300},
-                        {"key": "$$$$", "from": 300, "to": 400},
-                        {"key": "$$$$$", "from": 400, "to": 500},
-                        {"key": "$$$$$$", "from": 500},
+                        {   
+                            "key": "$",
+                            "from": 0,
+                            "to": 100
+                        },
+                        {
+                            "key": "$",
+                            "from": 100,
+                            "to": 200
+                        },
+                        {
+                            "key": "$",
+                            "from": 200,
+                            "to": 300
+                        },
+                        {
+                            "key": "$",
+                            "from": 300,
+                            "to": 400
+                        },
+                        {
+                            "key": "$",
+                            "from": 400,
+                            "to": 500
+                        },
+                        {
+                            "key": "$",
+                            "from": 500
+                        }
                     ]
                 },
                 "aggs": {
