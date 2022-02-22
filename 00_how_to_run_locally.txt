@@ -1,0 +1,14 @@
+After everything's been set-up
+
+In a terminal, the following will start OpenSearch
+
+cd ~/PycharmProjects/search_with_machine_learning_course/docer
+docker-compose up
+
+In PyCharm
+Open the project: search_with_machine_learning_course
+Start Flask web app for weekX by issuing the following in a PyCharm terminal window:
+
+export FLASK_ENV=development
+export FLASK_APP= weekX
+flask run --port 3000
