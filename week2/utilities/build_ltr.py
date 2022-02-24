@@ -3,6 +3,8 @@
 #  Our main class for creating an LTR model via XG Boost and uploading it to OpenSearch
 #
 ###
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import argparse
 import json
@@ -168,6 +170,8 @@ if __name__ == "__main__":
 
     )
     output_dir = args.output_dir
+    from pathlib import Path
+    print(f"***** Current working directory is: {Path.cwd()}")
     if os.path.isdir(output_dir) == False:
         os.mkdir(output_dir)
 
