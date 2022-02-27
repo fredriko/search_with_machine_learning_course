@@ -42,7 +42,7 @@ class DataPrepper:
         # print("Clicks post filtering promos: %s" % len(clicks_df))
         verify_file_path = "%s/%s" % (output_dir, verify_file)
         print("Verify info: flag: %s, path: %s, exists: %s" % (
-        verify_file, verify_file_path, os.path.exists(verify_file_path)))
+            verify_file, verify_file_path, os.path.exists(verify_file_path)))
         if verify_file and os.path.exists(verify_file_path):
             verify_file = pd.read_csv(verify_file_path)
             good = verify_file[verify_file["status"] == 1]
@@ -236,7 +236,8 @@ class DataPrepper:
     def __log_ltr_query_features(self, query_id, key, query_doc_ids, click_prior_query, no_results, terms_field="_id"):
 
         # FO: query_id appears to be a Series; get the number in the only row, in the only column
-        _query_id = query_id[0]
+        #_query_id = query_id[0]
+        _query_id = query_id.iloc[0]
 
         log_query = lu.create_feature_log_query(key, query_doc_ids, click_prior_query, self.featureset_name,
                                                 self.ltr_store_name, size=len(query_doc_ids), terms_field=terms_field)
@@ -247,7 +248,7 @@ class DataPrepper:
             # FO: What's an appropriate return value?
             return None
         # IMPLEMENT_START --
-        #print("IMPLEMENT ME: __log_ltr_query_features: Extract log features out of the LTR:EXT response and place in a data frame")
+        # print("IMPLEMENT ME: __log_ltr_query_features: Extract log features out of the LTR:EXT response and place in a data frame")
         # Loop over the hits structure returned by running `log_query` and then extract out the features from the response per query_id and doc id.  Also capture and return all query/doc pairs that didn't return features
         # Your structure should look like the data frame below
         if response and response.get("hits") and response.get("hits").get("hits") and len(response["hits"]["hits"]) > 0:
@@ -324,5 +325,6 @@ class DataPrepper:
 
     # Determine the number of clicks for this sku given a query (represented by the click group)
     def __num_clicks(self, all_skus_for_query, test_sku):
-        print("IMPLEMENT ME: __num_clicks(): Return how many clicks the given sku received in the set of skus passed ")
-        return 0
+        #print("IMPLEMENT ME: __num_clicks(): Return how many clicks the given sku received in the set of skus passed ")
+        num_clicks = [x for x in all_skus_for_query if x==test_sku]
+        return len(num_clicks)

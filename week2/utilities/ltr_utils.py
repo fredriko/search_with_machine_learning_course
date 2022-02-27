@@ -7,7 +7,27 @@ def create_rescore_ltr_query(user_query, query_obj, click_prior_query, ltr_model
                              active_features=None, rescore_size=500, main_query_weight=1, rescore_query_weight=2):
     # Create the base query, use a much bigger window
     # add on the rescore
-    print("IMPLEMENT ME: create_rescore_ltr_query")
+    #print("IMPLEMENT ME: create_rescore_ltr_query")
+    query_obj["rescore"] = {
+        "window_size": rescore_size,
+        "query": {
+            "rescore_query": {
+                "sltr": {
+                    "params": {
+                        "keywords": user_query,
+                        "click_prior_query": click_prior_query
+                    },
+                    "model": ltr_model_name,
+                    "store": ltr_store_name
+                }
+            },
+            "score_mode": "total",
+            "query_weight": main_query_weight,
+            "rescore_query_weight": rescore_query_weight
+        }
+    }
+    if active_features and len(active_features) > 0:
+        query_obj["rescore"]["query"]["rescore_query"]["sltr"]["active_features"] = active_features
     return query_obj
 
 
@@ -56,7 +76,6 @@ def create_sltr_hand_tuned_query(user_query, query_obj, click_prior_query, ltr_m
 
 def create_feature_log_query(query, doc_ids, click_prior_query, featureset_name, ltr_store_name, size=200,
                              terms_field="_id"):
-
     query_obj = {
         "size": size,
         'query': {
@@ -91,7 +110,7 @@ def create_feature_log_query(query, doc_ids, click_prior_query, featureset_name,
             }
         }
     }
-    #print("IMPLEMENT ME: create_feature_log_query")
+    # print("IMPLEMENT ME: create_feature_log_query")
     return query_obj
 
 
