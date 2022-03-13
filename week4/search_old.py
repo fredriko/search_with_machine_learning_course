@@ -9,10 +9,20 @@ from flask import (
 
 import week4.utilities.ltr_utils as lu
 import week4.utilities.query_utils as qu
-from week4.foo_classification import normalize_text
 from week4.opensearch import get_opensearch
 
 bp = Blueprint('search', __name__, url_prefix='/search')
+from foo_classification import normalize_text
+
+
+def categorize_query(query: str, model) -> List[str]:
+    query = normalize_text(query)
+    predictions = model.predict(query, k=5)
+    total_score = 0.
+    result = []
+    for (category, confidence) in zip(predictions[0], predictions[1]):
+        print(f"C: {category}, con: {confidence}")
+
 
 
 # Process the filters requested by the user and return a tuple that is appropriate for use in: the query, URLs displaying the filter and the display of the applied filters
@@ -57,19 +67,6 @@ def process_filters(filters_input):
     print("Filters: {}".format(filters))
 
     return filters, display_filters, applied_filters
-
-
-def get_query_category(user_query: str, query_class_model) -> List[str]:
-    user_query = normalize_text(user_query)
-    predictions = query_class_model.predict(user_query, k=5)
-    total_score = 0.
-    result = []
-    for (category, confidence) in zip(predictions[0], predictions[1]):
-        total_score += confidence
-        result.append(category.replace("__label__", ""))
-        if total_score >= 0.5:
-            break
-    return result
 
 
 @bp.route('/query', methods=['GET', 'POST'])
@@ -152,21 +149,6 @@ def query():
     else:
         query_obj = qu.create_query("*", "", [], sort, sortDir, size=100)
 
-    query_class_model = current_app.config["query_model"]
-    category_id_name_map = current_app.config["category_id_name_map"]
-    query_category = get_query_category(user_query, query_class_model)
-
-    if query_category is not None and user_query != "*":
-        show = [f"{category_id} - {category_id_name_map.get(category_id, '')}" for category_id in query_category]
-        print(f"*** Predicted categories for user query: '{user_query}': {' | '.join(show)}")
-        if "query" in query_obj and "bool" in query_obj["query"] and "filter" in query_obj["query"]["bool"]:
-            query_obj["query"]["bool"]["filter"] = [
-                {
-                    "terms": {
-                        "categoryPathIds.keyword": query_category
-                    }
-                }
-            ]
     # print("query obj: {}".format(query_obj))
     response = opensearch.search(body=query_obj, index=current_app.config["index_name"], explain=explain)
     # Postprocess results here if you so desire
@@ -175,7 +157,7 @@ def query():
     if error is None:
         return render_template("search_results.jinja2", query=user_query, search_response=response,
                                display_filters=display_filters, applied_filters=applied_filters,
-                               sort=sort, sortDir=sortDir, model=model, explain=explain, query_category=query_category)
+                               sort=sort, sortDir=sortDir, model=model, explain=explain)
     else:
         redirect(url_for("index"))
 
